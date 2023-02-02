@@ -1,4 +1,5 @@
 # Advanced-Calculator
+![Screenshot (527)](https://user-images.githubusercontent.com/79065694/216329154-0ea4ff00-3da7-4f2b-a9d5-e31a271e1608.png)
 Description:
 An advanced calculator similar to Casio-FX calculators implemented on ATmega32 
 microcontroller.
