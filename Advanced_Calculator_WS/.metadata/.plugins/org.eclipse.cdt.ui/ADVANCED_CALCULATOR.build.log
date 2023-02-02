@@ -1,0 +1,22 @@
+21:38:37 **** Incremental Build of configuration Debug for project ADVANCED_CALCULATOR ****
+make all 
+Building file: ../Advanced_calculator.c
+Invoking: AVR Compiler
+avr-gcc -Wall -g2 -gstabs -O0 -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega32 -DF_CPU=1000000UL -MMD -MP -MF"Advanced_calculator.d" -MT"Advanced_calculator.o" -c -o "Advanced_calculator.o" "../Advanced_calculator.c"
+In file included from ../Advanced_calculator.c:20:
+c:/winavr-20100110/lib/gcc/../../avr/include/util/delay.h:90:3: warning: #warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+../Advanced_calculator.c: In function 'matrixMode':
+../Advanced_calculator.c:344: warning: unused variable 'matrixMode'
+../Advanced_calculator.c: In function 'getMatrixData':
+../Advanced_calculator.c:710: error: incompatible type for argument 1 of 'fillMatrixData'
+../Advanced_calculator.c:715: error: incompatible type for argument 1 of 'fillMatrixData'
+../Advanced_calculator.c:720: error: incompatible type for argument 1 of 'fillMatrixData'
+../Advanced_calculator.c:725: error: incompatible type for argument 1 of 'fillMatrixData'
+../Advanced_calculator.c: In function 'fillMatrixData':
+../Advanced_calculator.c:768: error: subscripted value is neither array nor pointer
+../Advanced_calculator.c:770: error: subscripted value is neither array nor pointer
+make: *** [Advanced_calculator.o] Error 1
+"make all" terminated with exit code 2. Build might be incomplete.
+
+21:38:37 Build Failed. 7 errors, 2 warnings. (took 429ms)
+

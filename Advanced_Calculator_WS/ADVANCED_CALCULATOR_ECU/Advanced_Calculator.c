@@ -1,0 +1,729 @@
+/*
+ * Advanced_Calculator.c
+ *
+ *  Created on: Nov 14, 2022
+ *      Author: Omar EL-Sheikh
+ */
+/**************************************************************************
+ * 								Inclusions
+ **************************************************************************/
+#include "lcd.h"
+#include "keypad.h"
+#include <util/delay.h>
+#include <stdlib.h>
+#include "std_types.h"
+#include "math.h"
+/**************************************************************************
+ * 								Definitions
+ **************************************************************************/
+#define ON_KEY 13
+
+/**************************************************************************
+ * 								Pre-Defined Data Types
+ **************************************************************************/
+/* Enumerations Constants to define Calculator Modes */
+typedef enum {
+	NORMAL_MODE, COMPLEX_MODE, EQUATION_MODE, MATRIX_MODE, VECTOR_MODE, TABLE_MODE
+} Calculator_Mode;
+
+/* Enumerations Constants to define the type of Key Pressed */
+typedef enum {
+	NUMBER_KEY, OPERATION_KEY
+} Key_Type;
+
+/**************************************************************************
+ *								Global Variables
+ **************************************************************************/
+
+/**************************************************************************
+ * 								Functions Prototypes
+ **************************************************************************/
+/*
+ * Description:
+ * Function to make the system operate on Normal (Computing) Mode
+ */
+void normalMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Complex Mode
+ */
+void complexMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Equation Mode
+ */
+void equationMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Matrix Mode
+ */
+void matrixMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Vector Mode
+ */
+void vectorMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Table Mode
+ */
+void tableMode(void);
+
+/*
+ * Description:
+ * Function to get and return the calculator mode input from user
+ */
+Calculator_Mode getMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on the input mode
+ */
+void operateMode(Calculator_Mode a_mode);
+
+/*
+ * Description:
+ * Function to take the pressed key and return its type (Number / Operation)
+ */
+Key_Type getKeyType(uint8 a_key);
+
+/*
+ * Description:
+ * Function to solve 2 Equations in 2 Unknowns and display Results
+ */
+void twoInTwoEquation(void);
+
+/*
+ * Description:
+ * Function to solve Square Equation and display Results
+ */
+void quadrticEquation(void);
+
+/*
+ * Description:
+ * Function to solve 3 Equations in 3 Unknowns and display Results
+ */
+void threeInThreeEquation(void);
+
+int main (void){
+
+	Calculator_Mode mode;
+
+	/* LCD Driver Initialization */
+	LCD_init();
+
+	while(1){
+		/* Getting the desired mode from user */
+		mode = getMode();
+
+		/**LCD_clearScreen();
+		LCD_intgerToString(mode);
+		_delay_ms(1000);*/
+
+		operateMode(mode);
+	}
+}
+
+
+Calculator_Mode getMode(void){
+	uint8 desiredMode;
+
+	LCD_clearScreen();
+	LCD_displayString("Enter Mode !");
+	LCD_moveCursor(1, 0);
+	LCD_displayString("1:NORM  2:CMPLX");
+	LCD_moveCursor(2, 0);
+	LCD_displayString("3:EQNS  4:MTRX");
+	LCD_moveCursor(3, 0);
+	LCD_displayString("5:VECT  6:TABLE");
+	do {
+		desiredMode = KEYPAD_getPressedKey();
+	}
+	while(desiredMode > 6 || desiredMode < 1);
+
+	return desiredMode;
+}
+
+void operateMode(Calculator_Mode a_mode){
+	/* Array of 6 pointers to functions to call the required mode */
+	void (*ptr_calculatorMode[6])(void) = {normalMode, complexMode, equationMode, matrixMode, vectorMode, tableMode};
+
+	ptr_calculatorMode[a_mode-1]();
+}
+
+void normalMode(void){
+	uint8 key, operaterCounter = 0, operandCounter = 0, numCounter = 0;
+	Key_Type type;
+	char num[10] = {'\0'};
+	long double operands[20];
+	uint8 operators[20];
+	long double totRes = 0;
+	long double mulDivRes = 1;
+	operands[0] = '+';
+	uint8 prev = '+';
+	uint8 counter = 0;
+
+	LCD_clearScreen();
+	LCD_displayString("   Normal Mode");
+	LCD_moveCursor(1,0);
+
+
+	do {
+		key = KEYPAD_getPressedKey();
+		type = getKeyType(key);
+
+		if (counter==16){
+			LCD_moveCursor(2,0);
+		}
+		if (key == ON_KEY){
+			return;
+		}
+
+		if (type == NUMBER_KEY){
+			LCD_displayCharacter(key+48);
+			num[numCounter++] = key + 48;
+		}
+
+		else {
+			num[numCounter] = '\0';
+			numCounter = 0;
+			operands[operandCounter] = atol(num);
+			if (prev == 45){
+				operands[operandCounter] *= -1;
+			}
+			operandCounter++;
+			prev = key;
+
+			if (key != '='){
+				operators [operaterCounter++] = key;
+				LCD_displayCharacter(key);
+			}
+		}
+		_delay_ms(500);
+		counter++;
+	}
+	while (key != '=');
+
+	uint8 i = 0;
+	while (i <= operaterCounter){
+		mulDivRes = operands[i];
+		LCD_displayCharacter(' ');
+		while(operators[i] == '*' || operators [i] == '%'){
+			if (operators[i] == '*'){
+				mulDivRes *= operands[i+1];
+			}
+			else {
+				mulDivRes /= operands[i+1];
+			}
+			i++;
+		}
+		totRes += mulDivRes;
+		i++;
+	}
+
+	LCD_moveCursor(3,0);
+	LCD_displayString("=");
+	LCD_intgerToString(totRes);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+
+void complexMode(void){
+	LCD_clearScreen();
+	LCD_displayString("   Complex Mode");
+	LCD_moveCursor(1,0);
+	_delay_ms(1000);
+
+}
+
+
+void equationMode(void){
+	uint8 eqnType;
+
+	LCD_clearScreen();
+	LCD_displayString("  Equation Mode");
+	LCD_moveCursor(1,0);
+	LCD_displayString("1:anX+bnY=cn");
+	LCD_moveCursor(2,0);
+	LCD_displayString("2:aX^2+bX+c=0");
+	LCD_moveCursor(3,0);
+	LCD_displayString("3:anX+bnY+cnZ=dn");
+
+	/* Taking equation mode from user */
+	do {
+		eqnType = KEYPAD_getPressedKey();
+		_delay_ms(500);
+	}
+	while (eqnType > 3 || eqnType < 1);
+
+	switch(eqnType){
+	case 1:
+		twoInTwoEquation();
+		break;
+	case 2:
+		quadrticEquation();
+		break;
+	case 3:
+		threeInThreeEquation();
+		break;
+	}
+
+}
+
+
+void matrixMode(void){
+	LCD_clearScreen();
+	LCD_displayString("   Matrix Mode");
+	LCD_moveCursor(1,0);
+	_delay_ms(1000);
+
+}
+
+
+void vectorMode(void){
+	LCD_clearScreen();
+	LCD_displayString("   Vector Mode");
+	LCD_moveCursor(1,0);
+	_delay_ms(1000);
+
+}
+
+
+void tableMode(void){
+	LCD_clearScreen();
+	LCD_displayString("   Table Mode");
+	LCD_moveCursor(1,0);
+	_delay_ms(1000);
+
+}
+
+Key_Type getKeyType(uint8 a_key){
+
+	if (a_key <= 9){
+		return NUMBER_KEY;
+	}
+	else {
+		return OPERATION_KEY;
+	}
+}
+
+void quadrticEquation(void){
+	long double a, b, c, x1, x2, sqrtPart, realPart, imgPart;
+	uint8 i, key, numCounter = 0, sign ='+';
+	Key_Type type;
+
+	char num[10] = {'\0'};
+
+	LCD_clearScreen ();
+	for (i = 0; i < 3; i++){
+		LCD_moveCursor(i,0);
+		LCD_displayCharacter('a' + i);
+		LCD_displayCharacter(':');
+		sign = '+';
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+
+		switch (i){
+		case 0:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a = atol(num);
+			if (sign == 45){
+				a *= -1;
+			}
+
+			break;
+		case 1:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b = atol(num);
+			if (sign == 45){
+				b *= -1;
+			}
+
+			break;
+		case 2:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c = atol(num);
+			if (sign == 45){
+				c *= -1;
+			}
+
+			break;
+		}
+
+	}
+
+	sqrtPart = (b*b) - 4 * a * c;
+	LCD_clearScreen();
+	if (sqrtPart >= 0){
+		x1 = (-1 * b + sqrt(sqrtPart))/(2 * a);
+		x2 = (-1 * b - sqrt(sqrtPart))/(2 * a);
+
+		LCD_displayString("X1=");
+		LCD_intgerToString(x1);
+		LCD_moveCursor(1, 0);
+		LCD_displayString("X2=");
+		LCD_intgerToString(x2);
+	}
+	else {
+		realPart = (-1 * b) / (2 * a);
+		imgPart = (sqrt(-1 * sqrtPart)) / (2 * a);
+
+		LCD_displayString("X1=");
+		LCD_intgerToString(realPart);
+		LCD_displayCharacter('+');
+		LCD_intgerToString(imgPart);
+		LCD_displayCharacter('i');
+		LCD_moveCursor(1, 0);
+		LCD_displayString("X2=");
+		LCD_intgerToString(realPart);
+		LCD_displayCharacter('-');
+		LCD_intgerToString(imgPart);
+		LCD_displayCharacter('i');
+	}
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+void twoInTwoEquation(void){
+	long double a1, b1, c1, a2, b2, c2, x, y, x_r;
+	uint8 i, key, numCounter = 0, sign ='+';
+	Key_Type type;
+
+	char num[10] = {'\0'};
+
+	LCD_clearScreen ();
+	for (i = 0; i < 6; i++){
+		sign = '+';
+
+		if (i == 3){
+			LCD_clearScreen();
+		}
+
+		if (i >= 3){
+			LCD_moveCursor(i-3,0);
+			LCD_displayCharacter('a' + i - 3);
+			LCD_displayCharacter('2');
+			LCD_displayCharacter(':');
+		}
+		else {
+			LCD_moveCursor(i,0);
+			LCD_displayCharacter('a' + i);
+			LCD_displayCharacter('1');
+			LCD_displayCharacter(':');
+		}
+
+
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+
+		switch (i){
+		case 0:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a1 = atol(num);
+			if (sign == 45){
+				a1 *= -1;
+			}
+
+			break;
+		case 1:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b1 = atol(num);
+			if (sign == 45){
+				b1 *= -1;
+			}
+
+			break;
+		case 2:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c1 = atol(num);
+			if (sign == 45){
+				c1 *= -1;
+			}
+
+			break;
+		case 3:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a2 = atol(num);
+			if (sign == 45){
+				a2 *= -1;
+			}
+
+			break;
+		case 4:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b2 = atol(num);
+			if (sign == 45){
+				b2 *= -1;
+			}
+
+			break;
+		case 5:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c2 = atol(num);
+			if (sign == 45){
+				c2 *= -1;
+			}
+
+			break;
+		}
+
+	}
+
+	x_r = (float)(a1 / a2);
+	y = (float)(c1 - x_r * c2) / (b1 - x_r * b2);
+	x = (float)(c1 - b1 * y) / a1;
+
+	LCD_clearScreen();
+	LCD_displayString("X=");
+	LCD_intgerToString(x);
+	LCD_moveCursor(1, 0);
+	LCD_displayString("Y=");
+	LCD_intgerToString(y);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+void threeInThreeEquation(void){
+	long double a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, x, y, z, A1, B1, C1, A2, B2, C2, x_r;
+	uint8 i, key, numCounter = 0, sign ='+';
+	Key_Type type;
+
+	char num[10] = {'\0'};
+
+	LCD_clearScreen ();
+	for (i = 0; i < 12; i++){
+		sign = '+';
+
+		if (i == 4 || i == 8){
+			LCD_clearScreen();
+		}
+
+		if (i >= 8){
+			LCD_moveCursor(i-8,0);
+			LCD_displayCharacter('a' + i - 8);
+			LCD_displayCharacter('3');
+			LCD_displayCharacter(':');
+		}
+		else if (i >= 4){
+			LCD_moveCursor(i-4,0);
+			LCD_displayCharacter('a' + i - 4);
+			LCD_displayCharacter('2');
+			LCD_displayCharacter(':');
+		}
+		else {
+			LCD_moveCursor(i,0);
+			LCD_displayCharacter('a' + i);
+			LCD_displayCharacter('1');
+			LCD_displayCharacter(':');
+		}
+
+
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+		if (i == 0){
+
+		}
+		else if (i == 1){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b1 = atol(num);
+			if (sign == 45){
+				b1 *= -1;
+			}
+		}
+		else if (i == 2){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c1 = atol(num);
+			if (sign == 45){
+				c1 *= -1;
+			}
+		}
+		else if (i == 3){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			d1 = atol(num);
+			if (sign == 45){
+				d1 *= -1;
+			}
+		}
+		else if (i == 4){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a2 = atol(num);
+			if (sign == 45){
+				a2 *= -1;
+			}
+		}
+		else if (i == 5){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b2 = atol(num);
+			if (sign == 45){
+				b2 *= -1;
+			}
+		}
+		else if (i == 6){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c2 = atol(num);
+			if (sign == 45){
+				c2 *= -1;
+			}
+		}
+		else if (i == 7){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			d2 = atol(num);
+			if (sign == 45){
+				d2 *= -1;
+			}
+		}
+		else if (i == 8){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a3 = atol(num);
+			if (sign == 45){
+				a3 *= -1;
+			}
+		}
+		else if (i == 9){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b3 = atol(num);
+			if (sign == 45){
+				b3 *= -1;
+			}
+		}
+		else if (i == 10){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c3 = atol(num);
+			if (sign == 45){
+				c3 *= -1;
+			}
+		}
+		else if (i == 11){
+			num[numCounter] = '\0';
+			numCounter = 0;
+			d3 = atol(num);
+			if (sign == 45){
+				d3 *= -1;
+			}
+		}
+	}
+
+	LCD_displayCharacter(a1);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(b1);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(c1);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(d1);
+	LCD_displayCharacter(' ');
+	LCD_moveCursor(1,0);
+	LCD_displayCharacter(a2);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(b2);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(c2);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(d2);
+	LCD_displayCharacter(' ');
+	LCD_moveCursor(2,0);
+	LCD_displayCharacter(a3);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(b3);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(c3);
+	LCD_displayCharacter(' ');
+	LCD_displayCharacter(d3);
+	LCD_displayCharacter(' ');
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+

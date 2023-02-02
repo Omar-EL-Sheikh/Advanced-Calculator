@@ -1,0 +1,771 @@
+/*
+ * Advanced_calculator.c
+ *
+ *  Created on: Nov 19, 2022
+ *      Author: Omar EL-Sheikh
+ */
+
+
+/*
+ * Advanced_Calculator.c
+ *
+ *  Created on: Nov 14, 2022
+ *      Author: Omar EL-Sheikh
+ */
+/**************************************************************************
+ * 								Inclusions
+ **************************************************************************/
+#include "lcd.h"
+#include "keypad.h"
+#include <util/delay.h>
+#include <stdlib.h>
+#include "std_types.h"
+#include "math.h"
+/**************************************************************************
+ * 								Definitions
+ **************************************************************************/
+#define ON_KEY 13
+
+/**************************************************************************
+ * 								Pre-Defined Data Types
+ **************************************************************************/
+/* Enumerations Constants to define Calculator Modes */
+typedef enum {
+	NORMAL_MODE, COMPLEX_MODE, EQUATION_MODE, MATRIX_MODE, VECTOR_MODE, TABLE_MODE
+} Calculator_Mode;
+
+/* Enumerations Constants to define the type of Key Pressed */
+typedef enum {
+	NUMBER_KEY, OPERATION_KEY
+} Key_Type;
+
+/**************************************************************************
+ *								Global Variables
+ **************************************************************************/
+
+/**************************************************************************
+ * 								Functions Prototypes
+ **************************************************************************/
+/*
+ * Description:
+ * Function to make the system operate on Normal (Computing) Mode
+ */
+void normalMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Complex Mode
+ */
+void complexMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Equation Mode
+ */
+void equationMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Matrix Mode
+ */
+void matrixMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Vector Mode
+ */
+void vectorMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on Table Mode
+ */
+void tableMode(void);
+
+/*
+ * Description:
+ * Function to get and return the calculator mode input from user
+ */
+Calculator_Mode getMode(void);
+
+/*
+ * Description:
+ * Function to make the system operate on the input mode
+ */
+void operateMode(Calculator_Mode a_mode);
+
+/*
+ * Description:
+ * Function to take the pressed key and return its type (Number / Operation)
+ */
+Key_Type getKeyType(uint8 a_key);
+
+/*
+ * Description:
+ * Function to take keypad key input from user and return only accepted number in a defined region */
+uint8 Keypad_getNumInReg(uint8 a_min, uint8 a_max);
+
+/*
+ * Description:
+ * Function to solve 2 Equations in 2 Unknowns and display Results
+ */
+void twoInTwoEquation(void);
+
+/*
+ * Description:
+ * Function to solve Square Equation and display Results
+ */
+void quadrticEquation(void);
+
+/*
+ * Description:
+ * Function to solve 3 Equations in 3 Unknowns and display Results
+ */
+void threeInThreeEquation(void);
+
+/*
+ * Description:
+ * Function to get coefficients of a first order linear system from user
+ */
+void getCoeffs(long double * ptr_coeffs, uint8 size);
+
+/*
+ * Description:
+ * Function to solve 2 equations in 2 unknowns and return results
+ */
+void solveTwoInTwoEquation(long double * ptr_coeffs, long double * ptr_ans);
+
+/*
+ * Description:
+ * Function to solve 3 equations in 3 unknowns and return results
+ */
+void solveThreeinThreeEquation(long double * ptr_coeffs, long double * ptr_ans);
+
+/*
+ * Description:
+ * Function to get matrices data from user
+ */
+void getMatrixData(long double * ptr_matA, long double * ptr_matB, long double * ptr_matC, long double * ptr_matD, uint8 * ptr_Asize, uint8 * ptr_Bsize, uint8 * ptr_Csize, uint8 * ptr_Dsize);
+
+/*
+ * Description:
+ * Function to fill the data from user in the given matrix
+ */
+void fillMatrixData(long double ** ptr_ptr_mat, uint8 a_rows, uint8 a_cols);
+
+int main (void){
+
+	Calculator_Mode mode;
+
+	/* LCD Driver Initialization */
+	LCD_init();
+
+	while(1){
+		/* Getting the desired mode from user */
+		mode = getMode();
+
+		/**LCD_clearScreen();
+		LCD_intgerToString(mode);
+		_delay_ms(1000);*/
+
+		operateMode(mode);
+	}
+}
+
+
+Calculator_Mode getMode(void){
+	uint8 desiredMode;
+
+	LCD_clearScreen();
+	LCD_displayString("Enter Mode !");
+	LCD_moveCursor(1, 0);
+	LCD_displayString("1:NORM  2:CMPLX");
+	LCD_moveCursor(2, 0);
+	LCD_displayString("3:EQNS  4:MTRX");
+	LCD_moveCursor(3, 0);
+	LCD_displayString("5:VECT  6:TABLE");
+
+	desiredMode = Keypad_getNumInReg(1, 6);
+
+	return desiredMode;
+}
+
+void operateMode(Calculator_Mode a_mode){
+	/* Array of 6 pointers to functions to call the required mode */
+	void (*ptr_calculatorMode[6])(void) = {normalMode, complexMode, equationMode, matrixMode, vectorMode, tableMode};
+
+	ptr_calculatorMode[a_mode-1]();
+}
+
+uint8 Keypad_getNumInReg(uint8 a_min, uint8 a_max){
+	uint8 key;
+	do {
+		key = KEYPAD_getPressedKey();
+		_delay_ms(500);
+	}
+	while (key > a_max || key < a_min);
+
+	return key;
+}
+
+void normalMode(void){
+	uint8 key, operaterCounter = 0, operandCounter = 0, numCounter = 0;
+	Key_Type type;
+	char num[10] = {'\0'};
+	long double operands[20];
+	uint8 operators[20];
+	long double totRes = 0;
+	long double mulDivRes = 1;
+	operands[0] = '+';
+	uint8 prev = '+';
+	uint8 counter = 0;
+
+	LCD_clearScreen();
+	LCD_displayString("   Normal Mode");
+	LCD_moveCursor(1,0);
+
+
+	do {
+		key = KEYPAD_getPressedKey();
+		type = getKeyType(key);
+
+		if (counter==16){
+			LCD_moveCursor(2,0);
+		}
+		if (key == ON_KEY){
+			return;
+		}
+
+		if (type == NUMBER_KEY){
+			LCD_displayCharacter(key+48);
+			num[numCounter++] = key + 48;
+		}
+
+		else {
+			num[numCounter] = '\0';
+			numCounter = 0;
+			operands[operandCounter] = atol(num);
+			if (prev == 45){
+				operands[operandCounter] *= -1;
+			}
+			operandCounter++;
+			prev = key;
+
+			if (key != '='){
+				operators [operaterCounter++] = key;
+				LCD_displayCharacter(key);
+			}
+		}
+		_delay_ms(500);
+		counter++;
+	}
+	while (key != '=');
+
+	uint8 i = 0;
+	while (i <= operaterCounter){
+		mulDivRes = operands[i];
+		LCD_displayCharacter(' ');
+		while(operators[i] == '*' || operators [i] == '%'){
+			if (operators[i] == '*'){
+				mulDivRes *= operands[i+1];
+			}
+			else {
+				mulDivRes /= operands[i+1];
+			}
+			i++;
+		}
+		totRes += mulDivRes;
+		i++;
+	}
+
+	LCD_moveCursor(3,0);
+	LCD_displayString("=");
+	LCD_intgerToString(totRes);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+
+void complexMode(void){
+	uint8 key;
+	LCD_clearScreen();
+	LCD_displayString("   Complex Mode");
+	LCD_moveCursor(1,0);
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+
+}
+
+
+void equationMode(void){
+	uint8 eqnType;
+
+	LCD_clearScreen();
+	LCD_displayString("  Equation Mode");
+	LCD_moveCursor(1,0);
+	LCD_displayString("1:anX+bnY=cn");
+	LCD_moveCursor(2,0);
+	LCD_displayString("2:aX^2+bX+c=0");
+	LCD_moveCursor(3,0);
+	LCD_displayString("3:anX+bnY+cnZ=dn");
+
+	/* Taking equation mode from user */
+	eqnType = Keypad_getNumInReg(1, 3);
+
+	switch(eqnType){
+	case 1:
+		twoInTwoEquation();
+		break;
+	case 2:
+		quadrticEquation();
+		break;
+	case 3:
+		threeInThreeEquation();
+		break;
+	}
+
+}
+
+
+void matrixMode(void){
+	uint8 key, matrixMode, i, j, k = 0;
+	long double matA [9] = {0}, matB[9] = {0}, matC[9] = {0}, matD[9] = {0};
+	uint8 Asize[2], Bsize[2], Csize[2], Dsize[2];
+	LCD_clearScreen();
+	LCD_displayString("  Matrix Mode");
+	LCD_moveCursor(1,0);
+	LCD_displayString("1:Data");
+	LCD_moveCursor(1,10);
+	LCD_displayString("2:Sum");
+	LCD_moveCursor(2,0);
+	LCD_displayString("3:Subt");
+	LCD_moveCursor(2,10);
+	LCD_displayString("4:Mul");
+	LCD_moveCursor(3,0);
+	LCD_displayString("5:Trns");
+	LCD_moveCursor(3,10);
+	LCD_displayString("6:Invs");
+
+	key = Keypad_getNumInReg(1, 6);
+
+	switch (key){
+	case 1:
+		getMatrixData(matA, matB, matC, matD, &Asize, &Bsize, &Csize, &Dsize);
+		break;
+
+	case 2:
+
+		break;
+
+	case 3:
+		break;
+
+	case 4:
+		break;
+
+	case 5:
+		break;
+
+	case 6:
+		break;
+	}
+
+	LCD_clearScreen();
+	for (i = 0; i < Bsize[0]; i++){
+		LCD_moveCursor(i, 0);
+		for (j = 0; j < Bsize[1]; j++){
+			LCD_moveCursor(i, j*5);
+			LCD_intgerToString(matB[k]);
+			k++;
+		}
+	}
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+
+void vectorMode(void){
+	uint8 key;
+
+	LCD_clearScreen();
+	LCD_displayString("   Vector Mode");
+	LCD_moveCursor(1,0);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+
+void tableMode(void){
+	uint8 key;
+
+	LCD_clearScreen();
+	LCD_displayString("   Table Mode");
+	LCD_moveCursor(1,0);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+Key_Type getKeyType(uint8 a_key){
+
+	if (a_key <= 9){
+		return NUMBER_KEY;
+	}
+	else {
+		return OPERATION_KEY;
+	}
+}
+
+void quadrticEquation(void){
+	long double a, b, c, x1, x2, sqrtPart, realPart, imgPart;
+	uint8 i, key, numCounter = 0, sign ='+';
+	Key_Type type;
+
+	char num[10] = {'\0'};
+
+	LCD_clearScreen ();
+	for (i = 0; i < 3; i++){
+		LCD_moveCursor(i,0);
+		LCD_displayCharacter('a' + i);
+		LCD_displayCharacter(':');
+		sign = '+';
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+
+		switch (i){
+		case 0:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			a = atol(num);
+			if (sign == 45){
+				a *= -1;
+			}
+
+			break;
+		case 1:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			b = atol(num);
+			if (sign == 45){
+				b *= -1;
+			}
+
+			break;
+		case 2:
+			num[numCounter] = '\0';
+			numCounter = 0;
+			c = atol(num);
+			if (sign == 45){
+				c *= -1;
+			}
+
+			break;
+		}
+
+	}
+
+	sqrtPart = (b*b) - 4 * a * c;
+	LCD_clearScreen();
+	if (sqrtPart >= 0){
+		x1 = (-1 * b + sqrt(sqrtPart))/(2 * a);
+		x2 = (-1 * b - sqrt(sqrtPart))/(2 * a);
+
+		LCD_displayString("X1=");
+		LCD_intgerToString(x1);
+		LCD_moveCursor(1, 0);
+		LCD_displayString("X2=");
+		LCD_intgerToString(x2);
+	}
+	else {
+		realPart = (-1 * b) / (2 * a);
+		imgPart = (sqrt(-1 * sqrtPart)) / (2 * a);
+
+		LCD_displayString("X1=");
+		LCD_intgerToString(realPart);
+		LCD_displayCharacter('+');
+		LCD_intgerToString(imgPart);
+		LCD_displayCharacter('i');
+		LCD_moveCursor(1, 0);
+		LCD_displayString("X2=");
+		LCD_intgerToString(realPart);
+		LCD_displayCharacter('-');
+		LCD_intgerToString(imgPart);
+		LCD_displayCharacter('i');
+	}
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+void twoInTwoEquation(void){
+	long double coeffs[6], ans[2];
+	uint8 key;
+
+	getCoeffs(coeffs, 2);
+
+	solveTwoInTwoEquation(coeffs, ans);
+
+	LCD_clearScreen();
+	LCD_displayString("X=");
+	LCD_intgerToString(ans[0]);
+	LCD_moveCursor(1, 0);
+	LCD_displayString("Y=");
+	LCD_intgerToString(ans[1]);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+void threeInThreeEquation(void){
+	long double coeffs[12], ans[3];
+	uint8  key;
+
+	getCoeffs(coeffs, 3);
+
+	solveThreeinThreeEquation(coeffs, ans);
+
+	LCD_clearScreen();
+	LCD_displayString("X=");
+	LCD_intgerToString(ans[0]);
+	LCD_moveCursor(1, 0);
+	LCD_displayString("Y=");
+	LCD_intgerToString(ans[1]);
+	LCD_moveCursor(2, 0);
+	LCD_displayString("Z=");
+	LCD_intgerToString(ans[2]);
+
+	do {
+		key = KEYPAD_getPressedKey();
+	}
+	while (key != ON_KEY);
+}
+
+void getCoeffs(long double * ptr_coeffs, uint8 size){
+
+	uint8 i, j = 0, key, numCounter = 0, sign ='+', totSize;
+	Key_Type type;
+	char num[10] = {'\0'};
+
+	/* Computing the total number of coefficients based on the size of the system*/
+	totSize = size * (size + 1);
+
+	/* Getting the coefficients from user */
+	for (i = 0; i < totSize; i++){
+
+		if (i % (size + 1) == 0){
+			LCD_clearScreen();
+			j++;
+		}
+		LCD_moveCursor(i % (size + 1), 0);
+		LCD_displayCharacter('a' + (i % (size + 1)));
+		LCD_displayCharacter(j + 48);
+		LCD_displayCharacter(':');
+
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+
+		/* Converting the string number to long */
+		num[numCounter] = '\0';
+		numCounter = 0;
+		ptr_coeffs[i] = atol(num);
+		if (sign == 45){
+			ptr_coeffs[i] *= -1;
+		}
+	}
+}
+
+void solveTwoInTwoEquation(long double * ptr_coeffs, long double * ptr_ans){
+	long double a1, b1, c1, a2, b2, c2, x_r;
+
+	a1 = ptr_coeffs[0];
+	b1 = ptr_coeffs[1];
+	c1 = ptr_coeffs[2];
+	a2 = ptr_coeffs[3];
+	b2 = ptr_coeffs[4];
+	c2 = ptr_coeffs[5];
+
+	x_r = (float)(a1 / a2);
+	ptr_ans[0] = (float)(c1 - x_r * c2) / (b1 - x_r * b2);
+	ptr_ans[1] = (float)(c1 - b1 * ptr_ans[0]) / a1;
+}
+
+void solveThreeinThreeEquation(long double * ptr_coeffs, long double * ptr_ans){
+	long double a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, A1, B1, C1, A2, B2, C2, x_r;
+	a1 =  ptr_coeffs[0];
+	b1 =  ptr_coeffs[1];
+	c1 =  ptr_coeffs[2];
+	d1 =  ptr_coeffs[3];
+	a2 =  ptr_coeffs[4];
+	b2 =  ptr_coeffs[5];
+	c2 =  ptr_coeffs[6];
+	d2 =  ptr_coeffs[7];
+	a3 =  ptr_coeffs[8];
+	b3 =  ptr_coeffs[9];
+	c3 =  ptr_coeffs[10];
+	d3 =  ptr_coeffs[11];
+
+	A1 = b1 - b2 * (a1 / a2);
+	B1 = c1 - c2 * (a1 / a2);
+	C1 = d1 - d2 * (a1 / a2);
+
+	A2 = b2 - b3 * (a2 / a3);
+	B2 = c2 - c3 * (a2 / a3);
+	C2 = d2 - d3 * (a2 / a3);
+
+	x_r = A1 / A2;
+
+	ptr_ans[2] = (C1 - x_r * C2) / (B1 - x_r * B2);
+	ptr_ans[1] = (C1 - B1 * ptr_ans[2]) / A1;
+	ptr_ans[0] = (d1 - b1 * ptr_ans[1] - c1 * ptr_ans[2]) / a1;
+}
+
+void getMatrixData(long double * ptr_matA, long double * ptr_matB, long double * ptr_matC, long double * ptr_matD, uint8 * ptr_Asize, uint8 * ptr_Bsize, uint8 * ptr_Csize, uint8 * ptr_Dsize){
+	uint8 key, rows, cols;
+
+	LCD_clearScreen();
+	LCD_displayString("1:MatrixA");
+	LCD_moveCursor(1,0);
+	LCD_displayString("2:MatrixB");
+	LCD_moveCursor(2,0);
+	LCD_displayString("3:MatrixC");
+	LCD_moveCursor(3,0);
+	LCD_displayString("4:MatrixD");
+	key = Keypad_getNumInReg(1, 4);
+
+	LCD_clearScreen();
+	LCD_displayString("Enter Size !");
+	LCD_moveCursor(1, 0);
+	LCD_displayString("Rows:");
+	rows = Keypad_getNumInReg(1, 3);
+	LCD_intgerToString(rows);
+	LCD_moveCursor(2, 0);
+	LCD_displayString("Columns:");
+	cols = Keypad_getNumInReg(1, 3);
+	LCD_intgerToString(cols);
+	_delay_ms(300);
+
+
+	switch(key){
+	case 1:
+		fillMatrixData(&ptr_matA, rows, cols);
+		ptr_Asize[0] = rows;
+		ptr_Asize[1] = cols;
+		break;
+	case 2:
+		fillMatrixData(&ptr_matB, rows, cols);
+		ptr_Bsize[0] = rows;
+		ptr_Bsize[1] = cols;
+		break;
+	case 3:
+		fillMatrixData(&ptr_matC, rows, cols);
+		ptr_Csize[0] = rows;
+		ptr_Csize[1] = cols;
+		break;
+	case 4:
+		fillMatrixData(&ptr_matD, rows, cols);
+		ptr_Dsize[0] = rows;
+		ptr_Dsize[1] = cols;
+		break;
+	}
+}
+
+void fillMatrixData(long double ** ptr_ptr_mat, uint8 a_rows, uint8 a_cols){
+	uint8 i, j, k = 0, key, numCounter = 0, sign ='+';
+	Key_Type type;
+	char num[10] = {'\0'};
+
+	LCD_clearScreen();
+	for (i = 0; i < a_rows; i++){
+		LCD_moveCursor(i, 0);
+		for (j = 0; j < a_cols; j++){
+			LCD_moveCursor(i, 5*j);
+			do {
+				key = KEYPAD_getPressedKey();
+				type = getKeyType(key);
+
+				if (key == ON_KEY){
+					return;
+				}
+
+				if (type == NUMBER_KEY){
+					LCD_displayCharacter(key+48);
+					num[numCounter++] = key + 48;
+				}
+				else {
+					if (key != '='){
+						LCD_displayCharacter(key);
+						sign = key;
+					}
+				}
+				_delay_ms(500);
+			}
+			while (key != '=');
+
+			/* Converting the string number to long */
+			num[numCounter] = '\0';
+			numCounter = 0;
+			*(*ptr_ptr_mat + k) = atol(num);
+			if (sign == 45){
+				*(*ptr_ptr_mat + k) *= -1;
+			}
+			k++;
+			sign = '+';
+		}
+
+	}
+
+}

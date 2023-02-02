@@ -1,0 +1,20 @@
+21:38:37 **** Incremental Build of configuration Debug for project ADVANCED_CALCULATOR_ECU ****
+make all 
+Invoking: Print Size
+avr-size --format=avr --mcu=atmega16 ADVANCED_CALCULATOR_ECU.elf
+AVR Memory Usage
+----------------
+Device: atmega16
+
+Program:   17354 bytes (105.9% Full)
+(.text + .data + .bootloader)
+
+Data:        488 bytes (47.7% Full)
+(.data + .bss + .noinit)
+
+
+Finished building: sizedummy
+ 
+
+21:38:37 Build Finished. 0 errors, 0 warnings. (took 151ms)
+

@@ -1,0 +1,58 @@
+void getCoeffs(double * ptr_coeffs, uint8 size){
+
+	uint8 i, key, numCounter = 0, sign ='+', totSize;
+	Key_Type type;
+	char num[10] = {'\0'};
+
+	/* Computing the total number of coefficients based on the size of the system*/
+	totSize = size * (size + 1);
+
+	/* Getting the coefficients from user */
+	for (i = 0; i < totSize; i++){
+
+		if (i % (size + 1) == 0){
+			LCD_clearScreen();
+		}
+		LCD_moveCursor(i % (size + 1), 0);
+		LCD_displayCharacter('a' + (i % (size + 1) + 1));
+		LCD_displayCharacter((i % size) + 1);
+		LCD_displayCharacter(':');
+
+		do {
+			key = KEYPAD_getPressedKey();
+			type = getKeyType(key);
+
+			if (key == ON_KEY){
+				return;
+			}
+
+			if (type == NUMBER_KEY){
+				LCD_displayCharacter(key+48);
+				num[numCounter++] = key + 48;
+			}
+			else {
+				if (key != '='){
+					LCD_displayCharacter(key);
+					sign = key;
+				}
+			}
+			_delay_ms(500);
+		}
+		while (key != '=');
+
+		/* Converting the string number to long */
+		num[numCounter] = '\0';
+		numCounter = 0;
+		ptr_coeffs[i] = atol(num);
+		if (sign == 45){
+			ptr_coeffs[i] *= -1;
+		}
+	}
+}
+
+
+/*
+ * Description:
+ * Function to get coefficients of a first order linear system from user
+ */
+void getCoeffs(double * ptr_coeffs, uint8 size);
